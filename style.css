@@ -1,0 +1,47 @@
+<style>
+h1.title {
+    color:#800000;
+    background-color: azure;
+    opacity: 0.6;
+    font-family: 'Times New Roman';
+    font-size: 40px;
+    border: 3px solid red;
+    }
+h4.author {
+    color: black;
+    font-family: 'Times New Roman';
+    font-size: 18px;
+}
+h4.date {
+    color: black;
+    font-family: 'Times New Roman';
+    font-size: 18px;
+}
+body {
+    color: black;
+    font-size: 20px;
+    font-family: 'Times New Roman';
+    }
+    img {
+        padding: 2px;
+        border: 1px solid rgb(17, 13, 13);
+        border-radius: 3px;
+        margin: 0 5px;
+        max-width: 100%;
+      }
+#header {
+    color: black;
+    font-family: 'Times New Roman';
+    font-size: 34px;
+}
+##header {
+    color: black;
+    font-family: 'Times New Roman';
+    font-size: 30px;
+}     
+###header {
+    color: black;
+    font-family: 'Times New Roman';
+    font-size: 26px;
+} 
+</style>

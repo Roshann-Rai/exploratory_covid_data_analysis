@@ -1,0 +1,601 @@
+---
+title: "Data visualization and Exploratory data analysis of COVID 19"
+author: "Roshan Rai"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    code_folding: hide
+    toc_float: yes
+    fig_height: 6
+---
+<style type="text/css">
+
+td {  /* Table  */
+  font-size: 16px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 34px;
+  color: Black;
+  font-family: "Times New Roman", Times, serif;
+}
+h2 { /* Header 2 */
+    font-size: 30px;
+  color: Black;
+  font-family: "Times New Roman", Times, serif;
+}
+h3 { /* Header 3 */
+  font-size: 24px;
+  font-family: "Times New Roman", Times, serif;
+  color: Black;
+}
+body {
+    color: black;
+    font-size: 20px;
+    font-family: 'Times New Roman';
+    }
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+```{r message = FALSE, warning = FALSE}
+pacman::p_load(lubridate, kableExtra, DT, formattable, tidyverse, ggplot2, dplyr, data.table, corrplot, naniar, grid, ggthemes, gifski, knitr, RColorBrewer, cowplot, ggrepel, gridExtra, scales, plotly, geosphere)
+```
+
+# The COVID-19 Pandemic
+
+* The COVID-19 pandemic originating from Wuhan, China in the late 2019 spreaded like a wildfire infecting 517 million people and taking lives of 6.25 millions so far. The WHO declared the pandemic on 11th March 2020. The whole world faced number of lockdowns to control the spreading of the infections. Today, with the increase in the global vaccination campaigns against the COVID, the infection and death rate is going down. For more information about COVID, please visit [_WHO website_](https://www.who.int/health-topics/coronavirus#tab=tab_1).
+* As an Code For Nepal data fellow for 2021, I have tried to visualize and perform exploratory data analysis of COVID dataset. The dataset can be obtained from the [_github repository_](https://github.com/owid/covid-19-data/). 
+* I have tried to perform the exploratory data analysis and visualization using my every knowledge and skills. Some of the visualzations here are influenced by [Hao Zhang's notebook](https://www.kaggle.com/code/modesty520/covid-19-detailed-visualization). Please feel free to make any suggestions. You can reach out to me through my [_linkedin_](https://www.linkedin.com/in/roshan-rai-935301217/).
+
+# Data Importing and Cleaning
+May be because I am new to R, I have found data cleaning to be one of the most difficult task and yet one of the most important. It involves detecting, fixing or removing incorrect data. It sets the foundation for data analysis and visualization.
+
+## Importing the dataset
+The dataset contains the information regarding the daily new cases and deaths, total cases and deaths, vaccinations status of different countries. The contributors are continuously updating the dataset. The link for the dataset is mentioned above.
+```{r The COVID dataset}
+covid_world <- fread("C:/Roshan/R projects/covid/covid/covid_world_data.csv", stringsAsFactors = FALSE)
+```
+## Cleaning the dataset
+### Are there any missing values?
+This plot shows the intensity of missing values in different variables of the dataset. I have used **`naniar`** package to create this plot.
+```{r message = FALSE, warning = FALSE}
+gg_miss_var(covid_world)
+```
+
+### Replacing the missing values in the dataset
+As the above plot shows, there are lot of missing values. Since, I am not using all the variables for the exploratory data analysis and visualization, I am only replacing the missing values of certain variables. For variables like, **`new_cases`, `total_cases`, `new_deaths`, `total_deaths`, `tests_per_case`, `new_vaccinations`**, I have replaced the missing values with 0 while for variables like, **`population_density`, `median_age`, `gdp_per_capita`, `extreme_poverty`, `human_development_index`, `handwashing_facilities`, `male_smokers`, `female_smokers`** and **`population`**, I have replaced the missing values with **`mean`** and **`median`**.
+```{r}
+#Replacing missing values.
+covid_world$new_cases[is.na(covid_world$new_cases)] <- 0
+covid_world$total_cases[is.na(covid_world$total_cases)] <- 0
+covid_world$new_deaths[is.na(covid_world$new_deaths)] <- 0
+covid_world$total_deaths[is.na(covid_world$total_deaths)] <- 0
+covid_world$tests_per_case[is.na(covid_world$tests_per_case)] <- 0
+covid_world$new_vaccinations[is.na(covid_world$new_vaccinations)] <- 0
+covid_world$population_density[is.na(covid_world$population_density)] <- median(covid_world$population_density, na.rm = TRUE)
+covid_world$median_age[is.na(covid_world$median_age)] <- median(covid_world$median_age, na.rm = TRUE)
+covid_world$gdp_per_capita[is.na(covid_world$gdp_per_capita)] <- mean(covid_world$gdp_per_capita, na.rm = TRUE)
+covid_world$extreme_poverty[is.na(covid_world$extreme_poverty)] <- median(covid_world$extreme_poverty, na.rm = TRUE)
+covid_world$human_development_index[is.na(covid_world$human_development_index)] <- median(covid_world$human_development_index, na.rm = TRUE)
+covid_world$handwashing_facilities[is.na(covid_world$handwashing_facilities)] <- median(covid_world$handwashing_facilities, na.rm = TRUE)
+covid_world$male_smokers[is.na(covid_world$male_smokers)] <- median(covid_world$male_smokers, na.rm = TRUE)
+covid_world$female_smokers[is.na(covid_world$female_smokers)] <- median(covid_world$female_smokers, na.rm = TRUE)
+covid_world$population[is.na(covid_world$population)] <- median(covid_world$population, na.rm = TRUE)
+```
+### Converting date from categorical to date format
+Looking at the structure of `date`, I have found it to be in `character` format. So, it needs to be changed to `date` format.
+```{r}
+#Converting date from categorical into date format
+covid_world[["date"]] <- as.Date(covid_world[["date"]], format = "%d/%m/%Y")
+```
+### Removing the continents from country column
+I don't know why the continents data has been included in the country column when there is separate continent column. May be its an error. Let's remove the continents from the country column from the dataset.
+```{r}
+#Removing rows with certain elements
+covid_world <- subset(covid_world, !(country %in% c("Asia",
+                                                    "Africa",
+                                                    "Europe",
+                                                    "European Union",
+                                                    "High income",
+                                                    "Lower middle income",
+                                                    "Low Income",
+                                                    "Upper middle income",
+                                                    "Oceania",
+                                                    "South America",
+                                                    "North America",
+                                                    "International",
+                                                    "World")))
+```
+```{r}
+day_latest <- max(covid_world$date)
+```
+
+# Data manipulation and visualizations
+## Global COVID Pandemic heatmaps {.tabset}
+### The World Heat map for the total COVID infections
+Let's visualize  the COVID infections through out the globe using the heatmap.
+```{r, warning = FALSE, fig.align="center"}
+#Let's find the total number of covid infections and deaths in each country
+map <- covid_world%>%
+group_by(date, iso_code, country) %>%
+summarise(total_cases = sum(total_cases, na.rm = TRUE), 
+          total_deaths = sum(total_deaths, na.rm = TRUE),
+          .groups = "drop") %>%
+filter(date == max(date))
+
+#Creating the Heat map
+line <- list(color = toRGB("#d1d1d1"), width = 0.2)
+
+geo <- list(
+    showframe = FALSE,
+    showcoastlines = FALSE,
+    projection = list(type = 'orthographic'),
+    resolution = '100',
+    showcountries = TRUE,
+    countrycolor = '#d1d1d1',
+    showocean = TRUE,
+    oceancolor = '#064273',
+    showlakes = TRUE,
+    lakecolor = '#99c0db',
+    showrivers = TRUE,
+    rivercolor = '#99c0db',
+    bgcolor = '#e8f7fc')
+
+plot_geo() %>%
+  layout(geo = geo,
+         paper_bgcolor = '#e8f7fc',
+         title = paste0("World COVID-19 Confirmed Cases till ",  day_latest)) %>%
+  add_trace(data = map,
+            z = ~total_cases,
+            colors = "Reds",
+            text = ~country,
+            locations = ~iso_code,
+            marker = list(line = line))
+```
+
+### The World Heat map for the total COVID deaths
+Let's visualize  the COVID deaths through out the globe using the plotly.
+```{r, fig.align="center"}
+#Creating the heat map
+plot_geo() %>%
+  layout(geo = geo,
+         paper_bgcolor = '#e8f7fc',
+         title = paste0("World COVID-19 Confirmed Deaths till ",  day_latest)) %>%
+  add_trace(data = map,
+            z = ~total_deaths,
+            colors = "Reds",
+            text = ~country,
+            locations = ~iso_code,
+            marker = list(line = line))
+```
+### The World Heat map of COVID Vaccination Status
+```{r, warning = FALSE, error = FALSE, fig.align="center"}
+#Let's find the total number of people fully vaccinated in each country
+vaccination_status <- covid_world %>%
+group_by(country) %>%
+mutate(people_fully_vaccinated = max(people_fully_vaccinated, na.rm = TRUE)) %>%
+filter(date == max(date)) %>%
+select(date, country, iso_code, people_fully_vaccinated)
+
+#Converting 'people fully vaccinated' variable into integer
+vaccination_status[["people_fully_vaccinated"]] <- as.integer(vaccination_status[["people_fully_vaccinated"]])
+
+# Creating the heat map
+plot_geo() %>%
+    layout(geo = geo,
+         paper_bgcolor = '#e8f7fc',
+         title = paste0("World COVID-19 Vaccination Status till ", day_latest)) %>%
+  add_trace(data = vaccination_status,
+            z = ~people_fully_vaccinated,
+            colors = "Reds",
+            text = ~country,
+            locations = ~iso_code,
+            marker = list(line = line))
+```
+
+## Global COVID infections and deaths
+```{r, warning = FALSE, out.width = "80%", fig.height=8, fig.width=10}
+covid_world_sm <- covid_world %>%
+group_by(date) %>%
+summarise(total_cases = sum(total_cases, na.rm = TRUE),
+          total_deaths = sum(total_deaths, na.rm = TRUE), .groups = "drop") %>%
+select(date, total_cases, total_deaths) %>%
+ggplot(aes(x = date)) +
+geom_line(aes(y = total_cases), color = "#2e9449", size = 1) +
+geom_line(aes(y = total_deaths), size = 1, linetype = 2, color = "#9c2742") +
+scale_y_continuous(trans = "log10", labels = comma) +
+scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+labs(title = "Global COVID infections and deaths",
+    subtitle = "Till May 2022",
+    x = "",
+    y = "Log10 transformation",
+    caption = "© Roshan Rai") +
+theme_bw(base_size = 18) +
+theme(axis.text.x = element_text(angle = 45, color = "black", hjust = 1),
+     axis.text = element_text(color = "black"))
+
+
+covid_world_sm +
+geom_vline(xintercept = as.Date("2020-03-11"), linetype = "longdash", size = 0.35, col = "gray30") +
+  annotate("text", x = as.Date("2020-03-10"), y = 11100, label = "WHO announces pandemic \n", size = 5.2, angle = 90) +
+geom_vline(xintercept = as.Date("2020-01-30"), linetype = "longdash", size = 0.35, col = "gray30") +
+  annotate("text", x = as.Date("2020-01-20"), y = 16100, label = "Global health emergency declared \n", size = 5.2, angle = 90) +
+annotate("text", x = as.Date("2021-05-05"), y = 1000000, label = "Total Deaths \n", size = 5.2) +
+annotate("text", x = as.Date("2021-05-05"), y = 50000000, label = "Total Cases \n", size = 5.2)
+```
+
+### The Situation of COVID infections in different continents
+Looking into the `continent` variable, I have found there are some blank spaces. Hence, I need to remove those rows first before finding the total COVID infections in different continents. ```filter == max(date)``` helps to filter out the data of the max date i.e. if the dataset has data of different dates 2021/01/01, 2021/01/02, 2021/01/03... likewise, ```max(date)``` helps to select only the data of 2021/01/03.
+```{r}
+#Removing the blank
+covid_world <- subset(covid_world, continent != "")
+
+#Continents with total covid cases so far
+covid_continent <- covid_world %>%
+group_by(continent) %>%
+filter(date == max(date)) %>%
+summarize(total_cases = sum(total_cases, na.rm = TRUE),
+          total_deaths = sum(total_deaths, na.rm = TRUE),
+          deaths_to_cases = total_deaths/total_cases, .groups = "drop")
+
+#Print
+covid_continent %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, position = "left", html_font = "Cambria", font_size = 14)
+```
+### Visualizing the trend of new COVID infections in different continents
+```{r, warning=FALSE, out.width = "80%", fig.height=8, fig.width=10}
+#Custom theme
+theme_rs <- function(){ 
+    font <- "Georgia"   #assign font family up front
+    
+    theme_minimal() %+replace%    #replace elements we want to change
+        theme(
+           legend.position = "bottom", legend.direction = "horizontal", legend.title = element_blank(), 
+            axis.text = element_text(size = 16),
+            axis.text.x = element_text(angle = 45, hjust = 0.6),
+            plot.caption = element_text(color = "gray40", face = "italic", size = 11.5), 
+            legend.text = element_text(size = 16), axis.title = element_text(size = 17), 
+            axis.line = element_line(size = 0.4, colour = "grey10"),
+            plot.title = element_text(size = 19, colour = "gray11"), 
+            plot.subtitle = element_text(size = 15, colour = "gray36")
+    )
+}
+
+covid_continent_selected <- covid_world %>%
+  group_by(continent, date) %>%
+  summarise(new_cases = sum(new_cases, na.rm = TRUE), .groups = "drop") %>%
+  select(date, continent, new_cases) 
+
+ggplot(covid_continent_selected, aes(x = date, y = new_cases/100000, group = continent, fill = continent)) +
+geom_col() +
+labs(title = "New COVID cases in different continents",
+     y = "New cases in hundred thousands",
+    x = "",
+    subtitle = "",
+    caption = "© Roshan Rai") +
+theme_rs() +
+  theme(legend.position = "none") +
+scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
+facet_wrap(~continent)
+```
+
+
+### Visualizing the COVID infections in different continents
+Here, I have tried to visualize the total covid infections of different continents. I have transformed the y-scale using log10 transformation. I wanted to to label the `geom_line` using `ggrepel` but I failed. If someone can, please teach me too. :P
+```{r, warning = FALSE, out.width = "80%", fig.height=8, fig.width=10}
+#Plotting the total covid infection on different continents
+covid_continent_infections <- covid_world %>%
+  group_by(continent, date) %>%
+  summarise(total_cases = sum(total_cases, na.rm = TRUE), .groups = "drop") %>%
+  select(date, continent, total_cases) %>%
+ggplot(aes(x = date, y = total_cases, group = continent, color = continent)) +
+geom_line(size = 1.7, alpha = 0.8) +
+labs(title = "Total COVID infections in different continents so far",
+     subtitle = "",
+     y = "Total covid infections (Log10 transformation)",
+    x = "",
+    caption = "© Roshan Rai") +
+scale_x_date(date_labels = "%b %Y", date_breaks = "3 month") +
+scale_y_continuous(trans = "log10", labels = comma) +
+geom_vline(xintercept = as.Date("2020-03-11"), linetype = "longdash", size = 0.35, col = "gray30") +
+  annotate("text", x = as.Date("2020-06-29"), y = 210, label = "WHO announces \n pandemic", size = 5.2)+
+  annotate(geom = "curve", x = as.Date("2020-04-25"), 
+           y =132, xend = as.Date("2020-03-14"), 
+           yend = 30, curvature = -0.3, arrow = arrow(length = unit(5, "mm")))+
+scale_colour_brewer(palette = "Set1") +
+theme_rs()
+
+covid_continent_infections
+```
+
+### Visualizing the COVID deaths in different continents
+```{r, warning = FALSE, out.width = "80%", fig.height=8, fig.width=10}
+# Plotting the total covid deaths on different continents
+covid_continent_deaths <- covid_world %>%
+group_by(continent, date) %>%
+summarise(total_deaths = sum(total_deaths, na.rm = TRUE), .groups = "drop") %>%
+select(date, continent, total_deaths) %>%
+ggplot(aes(x = date, y = total_deaths, group = continent, color = continent)) +
+geom_line(size = 1.7, alpha = 0.9) +
+labs(title = "Total COVID deaths in different continents so far",
+     subtitle = "",
+     y = "Total covid deaths (Log10 transformation)",
+    x = "",
+    caption = "© Roshan Rai") +
+scale_x_date(date_labels = "%b %Y", date_breaks = "3 month") +
+scale_y_continuous(trans = "log10", labels = comma) +
+scale_colour_brewer(palette = "Set1") +
+theme_rs()
+
+covid_continent_deaths
+```
+
+## COVID situations in different countries
+So, what is the situation of COVID infections in different countries. Here, I have tried to explore and visualize the countries with the most infections and deaths.
+
+### Search to COVID datasets here
+```{r, warning = FALSE}
+covid_world %>%
+select(date, iso_code, continent, country, total_cases, total_deaths) %>%
+filter(date == max(date)) %>%
+datatable(
+rownames = FALSE,
+fillContainer = TRUE,
+option = list(bPaginate = FALSE),
+class = "cell-border stripe",
+colnames = c("Date", "ISO Code", "Continet", "Country", "Total Cases", "Total Deaths"))
+```
+### Which are the top 10 countries with the highest COVID infections?
+```{r, warning = FALSE}
+#Top 10 countries with the highest covid infections
+covid_infections_countries <- covid_world %>%
+group_by(country) %>%
+summarize(sumCases = sum(new_cases), .groups = "drop") %>%
+top_n(10, sumCases) %>%
+arrange(desc(sumCases))
+
+customGreen0 = "#DeF7E9"
+customGreen = "#71CA97"
+customRed = "#ff7f7f"
+
+#print the result
+formattable(covid_infections_countries, align = c("c", "c"), `country` = formatter("span", style = ~style(color = "grey", font.weight="bold")),
+            `sumCases`= color_tile(customGreen, customGreen0))
+```
+
+### Barplot for the countries with the highest COVID infections till 2022/04/21
+```{r, warning=FALSE, out.width = "80%", fig.height=8, fig.width=10}
+#Barplot of top 10 highest COVID infected countries
+ggplot(covid_infections_countries, aes(country, sumCases)) +
+geom_col(fill = "#4d37a6", width = 0.8, stat = "identity") +
+scale_y_continuous(labels = comma) +
+labs(title = "Top 10 countries with most COVID infections till ", day_latest,
+    x = "",
+    y = "") +
+theme_bw() +
+theme(plot.title = element_text(size = 20, hjust = 0.9),
+     axis.text = element_text(size = 16),
+     axis.text.x = element_text(angle = 90)) +
+coord_flip()
+```
+
+### Which are the top 10 countries with the highest COVID deaths?
+``` {r, warning = FALSE}
+#Top 10 countries with the highest COVID deaths
+covid_countries_deaths <- covid_world %>%
+group_by(country) %>%
+summarize(sumDeaths = sum(new_deaths)) %>%
+top_n(10, sumDeaths) %>%
+arrange(desc(sumDeaths))
+
+#Print the result
+covid_countries_deaths %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F, position = "left", html_font = "Cambria", font_size = 14)
+```
+
+### Barplot for the countries with the highest COVID deaths till 2022/04/21
+``` {r, warning=FALSE, out.width = "80%", fig.height=8, fig.width=10}
+#Barplot of top 10 highest COVID infected countries
+ggplot(covid_countries_deaths, aes(country, sumDeaths)) +
+geom_col(fill = "brown", width = 0.8, stat = "identity") +
+scale_y_continuous(labels = comma) +
+labs(title = "Top 10 countries with most COVID deaths till ", day_latest,
+    x = "",
+    y = "") +
+theme_bw() +
+theme(plot.title = element_text(size = 20, hjust = 0.9),
+     axis.text = element_text(size = 16)) +
+coord_flip()
+```
+
+### Trend of new covid cases and deaths in countries with the highest COVID cases
+``` {r, warning = FALSE, out.width = "80%", fig.height=8, fig.width=10}
+#Select the countries with the highest covid infections so far
+countries_selected <- c("United States",
+                       "India",
+                       "Brazil",
+                       "France",
+                       "Germany",
+                       "United Kingdom",
+                       "Russia",
+                       "South Korea",
+                       "Italy",
+                       "Turkey")
+
+#Plotting the new cases and deaths in the selected countries
+covid_countries_selected <- covid_world %>%
+filter(country %in% countries_selected) %>%
+group_by(date, country) %>%
+mutate(new_cases_smoothed = sum(new_cases_smoothed, na.rm = TRUE),
+       new_deaths_smoothed = sum(new_deaths_smoothed, na.rm = TRUE), .groups= "drop") %>%
+select(date, country, new_cases_smoothed, new_deaths_smoothed) %>%
+ggplot(aes(date)) +
+geom_line(aes(y = new_cases_smoothed, color = "#0c2396"), size = 1) +
+geom_line(aes(y = new_deaths_smoothed, color = "#a1163c"), size = 1, linetype = 2) +
+scale_y_continuous(labels = comma) +
+labs(title = "Trend of daily COVID infections and deaths",
+     subtitle = "",
+    x = "",
+    y = "Log10 transformation") +
+scale_colour_manual(name = 'Color', values = c('blue', 'darkred') ,labels = c('New cases', 'New deaths')) +
+theme_rs() +
+scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
+facet_wrap(~country)
+
+covid_countries_selected
+```
+
+## What about the SAARC region? {.tabset}
+If we look at the first two plots, we can clearly see that the trend of covid infections and deaths (7 days smoothed) is very high compared to other nations. The plots both of new cases and deaths follow similar pattern that clearly indicates that new cases and new deaths are strongly correlated. But comparing the new covid infections and deaths among countries seems unreliable when country with high population had definetely high covid infection and death rate. So, I have created two other plots; new cases per population and new deaths per population. When we look at these two plots we can clearly see that at one point in time, **Maldives** and **Bhutan** had more new cases per population than **India** while **Maldives**, **Nepal** and **Sri Lanka** had more deaths per population than **India**.
+
+### Trend of New Covid Cases in SAARC Countries
+```{r, warning = FALSE, out.width="80%", fig.height=9, fig.width=8}
+#Trend of new covid cases in SAARC region
+saarc <- list("Nepal", "India", "Afghanistan", "Maldives", "Bhutan", "Sri Lanka", "Pakistan", "Bangladesh")
+covid_world %>%
+filter(country %in% saarc) %>%
+group_by(date, country) %>%
+summarise(new_cases_smoothed = sum(new_cases_smoothed, na.rm = T),
+         .groups = "drop") %>%
+ggplot(aes(x = date, y = new_cases_smoothed)) +
+geom_line(size = 1, color = "darkblue") +
+labs(title = paste0("Trend of daily new cases till ", day_latest),
+    x = "",
+    y= "",
+    caption = "© Roshan Rai") +
+scale_y_continuous(labels = comma) +
+theme_bw(base_size = 18) +
+theme(
+plot.title = element_text(size = 20),
+axis.text.x = element_text(angle = 45, hjust=1),
+axis.text = element_text(color = "black")) +
+scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
+facet_wrap(~country)
+```
+
+### Trend of New Covid Deaths in SAARC countries
+```{r, warning = FALSE, out.width="80%", fig.height=9, fig.width=8}
+#Trend of new covid deaths in SAARC region
+covid_world %>%
+filter(country %in% saarc) %>%
+group_by(date, country) %>%
+summarise(
+         new_deaths_smoothed = sum(new_deaths_smoothed, na.rm = T),
+         .groups = "drop") %>%
+ggplot(aes(x = date, y = new_deaths_smoothed)) +
+geom_line(size = 1, color = "darkred") +
+labs(title = paste0("Trend of daily new deaths till ", day_latest),
+    x = "",
+    y= "",
+    caption = "© Roshan Rai") +
+scale_y_continuous(labels = comma) +
+theme_bw(base_size = 18) +
+theme(
+plot.title = element_text(size = 20),
+axis.text.x = element_text(angle = 45, hjust=1),
+axis.text = element_text(color = "black")) +
+scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
+facet_wrap(~country)
+```
+
+### Trend of New Covid cases per population in SAARC countries
+```{r, warning = FALSE, out.width="100%", fig.height=8, fig.width=14}
+#Trend of new covid cases per population
+covid_world %>%
+filter(country %in% saarc) %>%
+group_by(date, country) %>%
+summarise(new_cases_per_population = sum(new_cases_smoothed, na.rm = T)/population,
+          .groups = "drop") %>%
+select(date, country, new_cases_per_population) %>%
+ggplot(aes(date, new_cases_per_population)) +
+geom_line(size = 1, color = "darkblue") +
+labs(title = paste0("Trend of new covid cases per population till ", day_latest),
+    x = "",
+    y = "Cases per population") +
+theme_bw(base_size = 18) +
+theme(
+plot.title = element_text(size = 20),
+axis.text.x = element_text(angle = 45, hjust=1),
+axis.text = element_text(color = "black")) +
+scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
+facet_grid(~country)
+```
+
+### Trend of New Covid deaths per population in SAARC countries
+```{r, warning = FALSE, out.width="100%", fig.height=8, fig.width=14}
+#Trend of new deaths per population
+covid_world %>%
+filter(country %in% saarc) %>%
+group_by(date, country) %>%
+summarise(new_deaths_per_population = sum(new_deaths_smoothed, na.rm = T)/population,
+          .groups = "drop") %>%
+select(date, country, new_deaths_per_population) %>%
+ggplot(aes(date, new_deaths_per_population)) +
+geom_line(size = 1, color = "darkred") +
+labs(title = paste0("Trend of new covid deaths per population till ", day_latest),
+    x = "",
+    y = "Deaths per population") +
+theme_bw(base_size = 18) +
+theme(
+plot.title = element_text(size = 20),
+axis.text.x = element_text(angle = 45, hjust=1),
+axis.text = element_text(color = "black")) +
+scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
+facet_grid(~country)
+```
+
+# Exploratory Data analysis
+## Correlation coefficients of different variables
+```{r, warning = FALSE, out.width = "80%", fig.height=7, fig.width=8}
+#Selecting certain columns of covid_world 
+covid_world_corr <- covid_world %>%
+select(new_cases, new_deaths, tests_per_case, new_vaccinations, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers)
+
+#Plotting the correlation matrix
+cor <- cor(covid_world_corr)
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(cor, method = 'color', 
+         type = "upper", #Displays only upper part of the matrix
+         order = "hclust",
+         col=col(200),
+         addCoef.col = "black",  #Add coeffiecient of correlation
+        tl.col="black",  #Text label color
+         tl.srt=90,  #Text label rotation
+        diag = FALSE,
+        sig.level = 0.01, insig = "blank")
+```
+
+## covid deaths vs covid infections
+```{r, warning = FALSE, out.width = "100%", fig.height = 10, fig.width = 10}
+#new_cases vs new_deaths
+covid_world %>%
+group_by(date, continent) %>%
+summarize(new_cases = sum(new_cases),
+         new_deaths = sum(new_deaths), .groups = "drop") %>%
+# ungroup() %>%
+ggplot(aes(new_cases, new_deaths)) +
+geom_point() +
+geom_smooth(method = "lm", se = FALSE) +
+labs(title = "New COVID Cases Vs. Deaths",
+    subtitle = "Trend of COVID deaths with new cases",
+    x = "New Cases",
+    y = "New Deaths",
+    caption = "© Roshan Rai") +
+theme_bw(base_size = 16) +
+theme(plot.subtitle = element_text(size = 12),
+     axis.text = element_text(size = 14)) +
+facet_wrap(~continent)
+
+```
