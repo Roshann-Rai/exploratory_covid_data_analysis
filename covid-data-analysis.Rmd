@@ -63,7 +63,7 @@ May be because I am new to R, I have found data cleaning to be one of the most d
 ## Importing the dataset
 The dataset contains the information regarding the daily new cases and deaths, total cases and deaths, vaccinations status of different countries. The contributors are continuously updating the dataset. The link for the dataset is mentioned above.
 ```{r The COVID dataset}
-covid_world <- fread("C:/Roshan/R projects/covid/covid/covid_world_data.csv", stringsAsFactors = FALSE)
+covid_world <- fread("C:/Roshan/exploratory_covid_data_analysis/covid_world_data.csv", stringsAsFactors = FALSE)
 ```
 ## Cleaning the dataset
 ### Are there any missing values?
@@ -578,7 +578,7 @@ corrplot(cor, method = 'color',
 ```
 
 ## covid deaths vs covid infections
-```{r, warning = FALSE, out.width = "100%", fig.height = 10, fig.width = 10}
+```{r, warning = FALSE, error = FALSE, out.width = "100%", fig.height = 8, fig.width = 10}
 #new_cases vs new_deaths
 covid_world %>%
 group_by(date, continent) %>%
@@ -598,4 +598,26 @@ theme(plot.subtitle = element_text(size = 12),
      axis.text = element_text(size = 14)) +
 facet_wrap(~continent)
 
+```
+It shows that with the increase in covid infections there is increase in covid related deaths.
+
+## Death per population in different continents
+```{r, warning = FALSE, error = FALSE, out.width = "100%", fig.height = 8, fig.width = 10}
+#Deaths per pop
+covid_death_hdi <- covid_world %>%
+group_by(continent) %>%
+filter(date == max(date)) %>%
+select(total_deaths, population, human_development_index, continent) %>%
+mutate(deathperpop = total_deaths/population) 
+
+#Deaths w.r.t to HDI
+ggplot(covid_death_hdi, aes(human_development_index, deathperpop)) +
+geom_point() +
+geom_smooth(method = "lm", se = FALSE) +
+facet_wrap(~continent) +
+labs(title = "Death per population Vs. HDI in different continents",
+    x = "Human Development Index",
+    y = "Death per Population") +
+theme_bw(base_size = 16) +
+theme(plot.title = element_text(size = 18))
 ```
