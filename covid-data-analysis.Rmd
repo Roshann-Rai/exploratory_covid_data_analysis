@@ -1,5 +1,5 @@
 ---
-title: "Data visualization and Exploratory data analysis of COVID 19"
+title: "COVID 19 DATA VISUALIZATIOAN AND ANALYSIS"
 author: "Roshan Rai"
 date: "`r Sys.Date()`"
 output:
@@ -36,7 +36,7 @@ h3 { /* Header 3 */
 }
 body {
     color: black;
-    font-size: 20px;
+    font-size: 18px;
     font-family: 'Times New Roman';
     }
 code.r{ /* Code block */
@@ -556,7 +556,6 @@ scale_x_date(date_labels = "%b %Y", date_breaks = "6 month") +
 facet_grid(~country)
 ```
 
-# Exploratory Data analysis
 ## Correlation coefficients of different variables
 ```{r, warning = FALSE, out.width = "80%", fig.height=7, fig.width=8}
 #Selecting certain columns of covid_world 
@@ -578,7 +577,7 @@ corrplot(cor, method = 'color',
 ```
 
 ## covid deaths vs covid infections
-```{r, warning = FALSE, error = FALSE, out.width = "100%", fig.height = 8, fig.width = 10}
+```{r, warning = FALSE, error = FALSE, message = FALSE, out.width = "100%", fig.height = 8, fig.width = 10}
 #new_cases vs new_deaths
 covid_world %>%
 group_by(date, continent) %>%
@@ -602,7 +601,7 @@ facet_wrap(~continent)
 It shows that with the increase in covid infections there is increase in covid related deaths.
 
 ## Death per population in different continents
-```{r, warning = FALSE, error = FALSE, out.width = "100%", fig.height = 8, fig.width = 10}
+```{r, warning = FALSE, error = FALSE, message = FALSE, out.width = "100%", fig.height = 8, fig.width = 10}
 #Deaths per pop
 covid_death_hdi <- covid_world %>%
 group_by(continent) %>%
@@ -621,3 +620,22 @@ labs(title = "Death per population Vs. HDI in different continents",
 theme_bw(base_size = 16) +
 theme(plot.title = element_text(size = 18))
 ```
+
+Its interesting to see that COVID related death rate is higher in countries with high HDI. Except Europe in all continents, there is strong positive correlation between HDI and COVID related deaths. In my opinion, following may be the reasons:
+
+* High income countries have higher proportion of older population compared to low income countries. This means there is high probability for the infections and deaths related to COVID which was practically the case for Italy.
+* There is more COVID tests in high income countries. Hence, there is reliable database related to COVID infections and the deaths in high income countries. Many of the deaths in low income countries are left unreported resulting to lower COVID related deaths.
+* Other reason can be the larger population in high income countries with cardiovascular diseases, diabetes and other chronic diseases who are severely affected by COVID. Studies have shown that COVID death rates are high among people with chronic diseases.
+
+# My Experience
+
+This is a very huge dataset for me. There are a lot of data exploration and visualization that can be done from this dataset. I only chose to do few visualizations based on my skills and knowledge. I want to point out some of the important things I learned from this dataset.
+
+* I didn't know that **`date`** must be formatted into **`date format`**. I was getting errors. Thanks to **r/RLanguage** community, I was able to find out why I was getting the error.
+* When there is huge dataset for every days, it is better to **smooth** the data. Fortunately, this dataset has **smoothed** data, so I didn't need to do anything.
+* I used **`group_by`** so much that now I completely understand how to use it. :)
+* I learnt how to visualize the correlation coefficient using **`corrplot`**.
+* I came to know about heatmaps. I imitated the heatmap from **Hao Zhang's** notebook, I learnt how to create heatmap and also came to know about chlorepath maps.
+* Last thing is I learnt basics for creating **R markdown** and this is my first R markdown created html doc.
+
+I cannot end this blog without giving thanks to [_CodeForNepal_](https://codefornepal.org/) for providing me with this great opportunity to learn R. This blog best summarizes what I have learnt so far. If you have anymore ideas, feel free to make [_contributions_](https://github.com/Roshann-Rai/exploratory_covid_data_analysis).
